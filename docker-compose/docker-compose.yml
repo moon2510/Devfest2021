@@ -1,0 +1,68 @@
+version: "3"
+
+services:
+  ethstats:
+    image: puppeth/ethstats
+    ports:
+      - 3000:3000
+    env_file:
+      - .env
+    environment:
+      - "WS_SECRET=${ETH_STATS_KEY}"
+    networks:
+      - ethereum
+  
+  boot_node:
+    build:
+      context: .
+      dockerfile: boot_node/Dockerfile
+    ports:
+      - 30303:30303
+    env_file:
+      - .env
+    environment:
+      - "ETH_STATS=Boot Node:${ETH_STATS_KEY}@ethstats:3000"
+    networks:
+      - ethereum
+    depends_on:
+      - ethstats
+
+  miner_node:
+    build:
+      context: .
+      dockerfile: miner_node/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - "ETH_STATS=Miner Node:${ETH_STATS_KEY}@ethstats:3000"
+      - "BOOT_NODES=${BOOT_NODES}"
+    networks:
+      - ethereum
+    depends_on:
+      - boot_node
+      - ethstats
+
+  rpc_node:
+    build:
+      context: .
+      dockerfile: rpc_node/Dockerfile
+    ports:
+      - "8545:8545"
+    env_file:
+      - .env
+    environment:
+      - "ETH_STATS=RPC Node:${ETH_STATS_KEY}@ethstats:3000"
+      - "BOOT_NODES=${BOOT_NODES}"
+    networks:
+      - ethereum
+    depends_on:
+      - boot_node
+      - ethstats
+
+volumes:
+  miner_node: {}
+  boot_node: {}
+  rpc_node: {}
+
+networks:
+  ethereum: {}
